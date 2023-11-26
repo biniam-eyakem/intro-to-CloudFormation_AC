@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  ZemenWebsiteS3:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: zemen-website
+      AccessControl: PublicRead
+      WebsiteConfiguration: 
+        IndexDocument: Index.html

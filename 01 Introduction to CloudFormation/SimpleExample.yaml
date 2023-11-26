@@ -7,3 +7,6 @@ Resources:
       Tags:
         - Key: Name
           Value: A simple example
+        - Key: UserGroup
+          Value: Developers
+
