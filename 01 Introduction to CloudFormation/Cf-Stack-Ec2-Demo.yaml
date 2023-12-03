@@ -1,0 +1,11 @@
+Resources:
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-05c13eab67c5d8861
+      Tags:
+        - Key: Name
+          Value: Zemen Yehab Server
+        - Key: Project
+          Value: ACG CF Stack Labs

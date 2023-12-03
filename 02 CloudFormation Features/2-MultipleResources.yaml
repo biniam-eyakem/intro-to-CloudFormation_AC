@@ -3,13 +3,15 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-43874721 # Amazon Linux AMI in Sydney
+      ImageId: ami-467ca739 # Amazon Linux AMI in N.Virginia
       Tags:
         - Key: "Name"
-          Value: !Join [ " ", [ EC2, Instance, with, Fn, Join ] ]
+          Value: "JoinFnDemo"
+        - Key: "Description"
+          Value: !Join [ " ", [ EC2, Instance, with, Fn, Join ] ]  
       SecurityGroups: 
-        - !Ref MySecurityGroup
-  MySecurityGroup:
+        - !Ref SecurityGroupAllowRdpAllIp
+  SecurityGroupAllowRdpAllIp:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: Enable SSH access via port 22
