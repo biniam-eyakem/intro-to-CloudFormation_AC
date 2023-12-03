@@ -48,8 +48,8 @@ Resources:
     Properties:
       AvailabilityZones: !GetAZs
       LaunchConfigurationName: !Ref LaunchConfiguration
-      MinSize: 1
-      MaxSize: 3
+      MinSize: 3
+      MaxSize: 5
       TargetGroupARNs: 
         - !Ref TargetGroup
   LaunchConfiguration:
@@ -92,7 +92,7 @@ Resources:
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: ALB Security Group
+      GroupDescription: ALB Security Group Web App DNS
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -102,7 +102,7 @@ Resources:
   EC2SecurityGroup: 
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: EC2 Instance
+      GroupDescription: EC2 Instance allows ALB ingress
   EC2InboundRule: # EC2 can only accept traffic from ALB
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
