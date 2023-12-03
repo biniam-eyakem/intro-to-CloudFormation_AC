@@ -1,0 +1,121 @@
+Parameters:
+  webAppEc2KeyPair:
+    Description: EC2 instance key Pair
+    Type: AWS::EC2::KeyPair::KeyName
+  VpcId:
+    Description: Please enter existing VPC VpcId
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Description: Please enter subnets within the selected VPC
+    Type: List<AWS::EC2::Subnet::Id>
+Mappings:
+  RegionAmiMap:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      SecurityGroups: 
+        - !Ref ALBSG
+      Subnets: !Ref SubnetIds
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: 
+            Ref: WebAppTargetGroup
+  WebAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs
+      LaunchConfigurationName: !Ref WebAppLaunchConfiguration
+      MinSize: 3
+      MaxSize: 5
+      TargetGroupARNs: 
+        - !Ref WebAppTargetGroup
+  WebAppLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata: 
+      Comment: Install php and httpd
+      AWS::CloudFormation::Init:
+        config: 
+          packages: 
+            yum:
+              httpd: []
+              php: []
+          files: 
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "Hello world Abs was here!"; ?>
+          services: 
+            sysvinit:
+              httpd:
+                enabled: true
+                ensureRunning: true
+    Properties:
+      KeyName: !Ref webAppEc2KeyPair
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref EC2SG
+      ImageId:
+        Fn::FindInMap:
+        - RegionAmiMap
+        - !Ref AWS::Region
+        - AMI
+      UserData:
+        'Fn::Base64': 
+          !Sub |
+            #!/bin/bash -xe                        
+            # Ensure AWS CFN Bootstrap is the latest
+            yum install -y aws-cfn-bootstrap
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region}
+  ALBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB Security Group, allow ingress from internet on port 80
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+  EC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 instance security group
+  EC2InboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Description: EC2 instance security group, only allow ingress from ALB SecurityGroup
+    Properties:
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId:
+        !GetAtt
+          - ALBSG
+          - GroupId
+      GroupId:
+        !GetAtt
+        - EC2SG
+        - GroupId
+Outputs:
+  EC2SgGroupId:
+    Description: EC2 Instance SG GroupId
+    Value: !Sub 'EC2 SG GroupId: ${EC2SG.GroupId}'
+  PublicDns:
+    Description: The ALB Public DNS
+    Value: !Sub 'http://${LoadBalancer.DNSName}'
