@@ -3,13 +3,13 @@ Parameters:
     Description: EC2 instance key Pair
     Type: AWS::EC2::KeyPair::KeyName
   VpcId:
-    Description: Please enter existing VPC VpcId
+    Description: Enter the VpcId
     Type: AWS::EC2::VPC::Id
   SubnetIds:
-    Description: Please enter subnets within the selected VPC
+    Description: Enter the Subnets
     Type: List<AWS::EC2::Subnet::Id>
 Mappings:
-  RegionAmiMap:
+  RegionMap:
     us-east-1:
       AMI: ami-1853ac65
     us-west-1:
@@ -17,9 +17,9 @@ Mappings:
 Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties: 
-      SecurityGroups: 
-        - !Ref ALBSG
+    Properties:
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
       Subnets: !Ref SubnetIds
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -29,9 +29,9 @@ Resources:
       Protocol: HTTP
       DefaultActions:
         - Type: forward
-          TargetGroupArn: 
-            Ref: WebAppTargetGroup
-  WebAppTargetGroup:
+          TargetGroupArn:
+            Ref: TargetGroup
+  TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       Port: 80
@@ -41,12 +41,12 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       AvailabilityZones: !GetAZs
-      LaunchConfigurationName: !Ref WebAppLaunchConfiguration
+      LaunchConfigurationName: !Ref LaunchConfiguration
       MinSize: 3
       MaxSize: 5
       TargetGroupARNs: 
-        - !Ref WebAppTargetGroup
-  WebAppLaunchConfiguration:
+        - !Ref TargetGroup
+  LaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Metadata: 
       Comment: Install php and httpd
@@ -59,7 +59,7 @@ Resources:
           files: 
             /var/www/html/index.php:
               content: !Sub |
-                <?php print "Hello world Abs was here!"; ?>
+                <?php print "Hello world Biniam Negus was here!"; ?>
           services: 
             sysvinit:
               httpd:
@@ -69,10 +69,10 @@ Resources:
       KeyName: !Ref webAppEc2KeyPair
       InstanceType: t2.micro
       SecurityGroups:
-        - !Ref EC2SG
+        - !Ref EC2SecurityGroup
       ImageId:
         Fn::FindInMap:
-        - RegionAmiMap
+        - RegionMap
         - !Ref AWS::Region
         - AMI
       UserData:
@@ -83,7 +83,7 @@ Resources:
             yum install -y aws-cfn-bootstrap
             # Install the files and packages from the metadata
             /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --region ${AWS::Region}
-  ALBSG:
+  ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: ALB Security Group, allow ingress from internet on port 80
@@ -93,7 +93,7 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-  EC2SG:
+  EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: EC2 instance security group
@@ -106,16 +106,13 @@ Resources:
       ToPort: 80
       SourceSecurityGroupId:
         !GetAtt
-          - ALBSG
-          - GroupId
+        - ALBSecurityGroup
+        - GroupId
       GroupId:
         !GetAtt
-        - EC2SG
+        - EC2SecurityGroup
         - GroupId
 Outputs:
-  EC2SgGroupId:
-    Description: EC2 Instance SG GroupId
-    Value: !Sub 'EC2 SG GroupId: ${EC2SG.GroupId}'
   PublicDns:
     Description: The ALB Public DNS
     Value: !Sub 'http://${LoadBalancer.DNSName}'
